@@ -1,0 +1,27 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=67.0.0","wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eso-sentiment-analysis"
+version = "0.0.1"
+dependencies = [
+    "requests",
+    "requests-ratelimiter",
+    "pandas",
+]
+
+[project.optional-dependencies]
+dev = [
+    "bandit",
+    "black",
+    "flake8",
+    "isort",
+    "jupyter",
+    "pylint",
+    "pytest",
+    "pytest-timeout",
+    "pytest-mock",
+]
