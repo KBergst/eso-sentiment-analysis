@@ -2,35 +2,49 @@
 Functions involved with calling the ESO forum api.
 """
 
+import argparse
+from datetime import date, datetime, timedelta
+
 import pandas as pd
+from requests.adapters import HTTPAdapter
 from requests_ratelimiter import LimiterSession
 from urllib3.util import Retry
-from requests.adapters import HTTPAdapter
-from datetime import date, datetime, timedelta
-import inspect  # debugging mock issues
+
 
 def daterange_inclusive(start_date: date, end_date: date):
     """
     adapted from https://stackoverflow.com/questions/1060279/iterating-through-a-range-of-dates-in-python to be inclusive
-    You can tell it isn't my code bc they actually use type hinting B) 
+    You can tell it isn't my code bc they actually use type hinting B)
     I should really do that....
     """
-    days = int((end_date - start_date).days)+1
+    days = int((end_date - start_date).days) + 1
     for n in range(days):
         yield start_date + timedelta(n)
 
 
-def generate_session(per_minute_limit=100, num_retries=10, status=5, status_forcelist=[504], 
-                     backoff_factor=0.5, raise_on_status=True):
-    """ Create the api session used to make requests. Implements rate limits 
+def generate_session(
+    per_minute_limit=100,
+    num_retries=10,
+    status=5,
+    status_forcelist=[504],
+    backoff_factor=0.5,
+    raise_on_status=True,
+):
+    """Create the api session used to make requests. Implements rate limits
     and retries on timeout errors.
     """
     session = LimiterSession(per_minute=per_minute_limit)
-    retry_obj = Retry(total=num_retries, status=status, status_forcelist = status_forcelist, 
-                      backoff_factor=backoff_factor, raise_on_status=raise_on_status) 
-    session.mount('https://', HTTPAdapter(max_retries=retry_obj))
+    retry_obj = Retry(
+        total=num_retries,
+        status=status,
+        status_forcelist=status_forcelist,
+        backoff_factor=backoff_factor,
+        raise_on_status=raise_on_status,
+    )
+    session.mount("https://", HTTPAdapter(max_retries=retry_obj))
 
     return session
+
 
 def save_to_table(
     json_response,
@@ -43,15 +57,17 @@ def save_to_table(
     bad_filter = resp_df.filter(bad_fields)
     resp_df = resp_df.drop(bad_filter, axis="columns")
     resp_df.to_sql(
-        destination_table_name, destination_db_con,
-        index=False, if_exists="append"
+        destination_table_name, destination_db_con, index=False, if_exists="append"
     )
 
     return resp_df
 
-def _save_completed_date(destination_db_con, endpoint, fin_date, dates_table_name="retrieved_dates"):
+
+def _save_completed_date(
+    destination_db_con, endpoint, fin_date, dates_table_name="retrieved_dates"
+):
     """
-    writes a date and endpoint to a table in a database. For use by get_all_from_one_day 
+    writes a date and endpoint to a table in a database. For use by get_all_from_one_day
     once all the data from the given day has been saved
     """
     # don't save if today bc not finished for sure
@@ -63,7 +79,7 @@ def _save_completed_date(destination_db_con, endpoint, fin_date, dates_table_nam
         dates_table_name, destination_db_con, index=False, if_exists="append"
     )
 
-                        
+
 def get_all_from_one_day(
     api_session,
     api_base_url,
@@ -77,26 +93,33 @@ def get_all_from_one_day(
     saving_kwargs={},
 ):
     """get all from endpoint on a given day"""
-    #TODO HANDLING TIMEOUTS error 504
+    # TODO HANDLING TIMEOUTS error 504
     # handle field spec cases
     fields_string = ""
     if not hasattr(specific_fields, "__len__") and (specific_fields is None):
         pass  # no fields specified
     elif isinstance(specific_fields, str):
         # one field specified as string
-        fields_string = "&fields=" + specific_fields  
+        fields_string = "&fields=" + specific_fields
     else:  # list of fields
         fields_string = "&fields=" + ",".join(specific_fields)
     # pull the data
 
     # get the first page and send it
     response = api_session.get(
-        api_base_url + endpoint + "?" + f"limit={record_limit}" + f"&dateInserted={date}" + fields_string, timeout=None
+        api_base_url
+        + endpoint
+        + "?"
+        + f"limit={record_limit}"
+        + f"&dateInserted={date}"
+        + fields_string,
+        timeout=None,
     )
     if response.headers["x-app-page-result-count"] == 0:
         # no data for this day
-        _save_completed_date(destination_db_con, endpoint, date, 
-                            dates_table_name=dates_table_name) 
+        _save_completed_date(
+            destination_db_con, endpoint, date, dates_table_name=dates_table_name
+        )
         return
 
     save_to_table(
@@ -106,12 +129,16 @@ def get_all_from_one_day(
     # get the remaining pages
     while "x-app-page-next-url" in response.headers.keys():
         print("in while loop")
-        response = api_session.get(response.headers["x-app-page-next-url"], timeout=None)
+        response = api_session.get(
+            response.headers["x-app-page-next-url"], timeout=None
+        )
         save_to_table(
             response.json(), destination_db_con, destination_table_name, **saving_kwargs
         )
     # save date to 'completed' table
-    _save_completed_date(destination_db_con, endpoint, date, dates_table_name=dates_table_name)
+    _save_completed_date(
+        destination_db_con, endpoint, date, dates_table_name=dates_table_name
+    )
 
 
 def get_all_from_endpoint(
@@ -143,21 +170,63 @@ def get_all_from_endpoint(
     else:
         end_date_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
     # pull previously finished dates
-    completed_dates = pd.read_sql("SELECT date FROM ? WHERE endpoint is ?", destination_db_con, params=[dates_table_name, endpoint])
-    
+    completed_dates = pd.read_sql(
+        "SELECT date FROM ? WHERE endpoint is ?",
+        destination_db_con,
+        params=[dates_table_name, endpoint],
+    )
+
     print(completed_dates)
-    
+
     for given_date_dt in daterange_inclusive(start_date_dt, end_date_dt):
         given_date = given_date_dt.strftime("%Y-%m-%d")
         if given_date in completed_dates["date"]:
-            print(f"data from {given_date} on {endpoint} endpoint already retrieved, skipping")
+            print(
+                f"data from {given_date} on {endpoint} endpoint already retrieved, skipping"
+            )
             continue
         print(f"retrieving data from {given_date}...")
-        get_all_from_one_day(api_session, api_base_url, endpoint, given_date, 
-                             destination_db_con, destination_table_name,
-                             record_limit=record_limit, specific_fields=specific_fields, 
-                             dates_table_name=dates_table_name, saving_kwargs=saving_kwargs)
-    
-    
+        get_all_from_one_day(
+            api_session,
+            api_base_url,
+            endpoint,
+            given_date,
+            destination_db_con,
+            destination_table_name,
+            record_limit=record_limit,
+            specific_fields=specific_fields,
+            dates_table_name=dates_table_name,
+            saving_kwargs=saving_kwargs,
+        )
 
-    
+
+############ script part ##################
+if __name__ == "__main__":
+    # get command-line options
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "endpoint", help="the api endpoint desired e.g. comments, discussions"
+    )
+    parser.add_argument(
+        "start_date",
+        help="the earliest date from which you want to pull records",
+        default="2014-01-01",
+    )
+    parser.add_argument(
+        "end_date",
+        help="the latest date from which you want to pull records",
+        default="today",
+    )
+    args = parser.parse_args()
+    # do default connections
+    api_session = generate_session()
+    db_con = sqlite3.connect("data/eso_forum.db")
+    # run dat boi
+    get_all_from_endpoint(
+        api_session,
+        "https://forums.elderscrollsonline.com/api/v2/",
+        args.endpoint,
+        args.start_date,
+        db_con,
+        end_date=args.end_date,
+    )
