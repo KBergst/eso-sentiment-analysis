@@ -3,6 +3,8 @@
 services:
   analysis-service:
     build: .
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
     volumes:
       - data-volume:/user/eso_analysis/data
   test-service:

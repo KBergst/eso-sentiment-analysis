@@ -61,3 +61,5 @@ COPY --from=builder /home/eso_analysis/dist/eso_sentiment_analysis*.whl /home/es
 # upgrade pip n install wheel
 RUN python -m pip install --upgrade pip setuptools && \
     python -m pip install --no-cache-dir eso_sentiment_analysis*.whl
+
+CMD /bin/bash
