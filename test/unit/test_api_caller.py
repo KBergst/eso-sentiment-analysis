@@ -111,10 +111,10 @@ def test_save_completed_date(mocker, test_date, db_written):
     mock_save_to_db = mocker.patch('pandas.DataFrame.to_sql')
     str_test_date = test_date.strftime("%Y-%m-%d")
     
-    api_caller._save_completed_date(mock_con,"test", str_test_date, dates_table_name="test_date")
+    api_caller._save_completed_date(mock_con,"test", str_test_date)
 
     if db_written:  # writes data to correct place
-        mock_save_to_db.assert_called_once_with("test_date", mock_con, index=False, if_exists="append")
+        mock_save_to_db.assert_called_once_with("retrieved_dates", mock_con, index=False, if_exists="append")
     else:  # doesn't write data
         mock_save_to_db.assert_not_called()
     
@@ -202,8 +202,7 @@ def test_get_all_from_one_day_pages(mocker, num_pages, header_dicts):
     # saved the data from each api call with some data
     assert mocked_save.call_count == num_pages
     # wrote the date once finished
-    mocked_date_save.assert_called_once_with(mock_con, "comments", "2014-06-24",
-                                             dates_table_name="retrieved_dates")
+    mocked_date_save.assert_called_once_with(mock_con, "comments", "2014-06-24")
 
     
 @pytest.mark.parametrize("date_range,end_date", [(['2016-07-24', '2016-08-01'],'2016-08-01'),(['2010-01-01', '2010-01-13'],'2010-01-13'),(['2025-10-24',date.today().strftime("%Y-%m-%d")],'today')])
@@ -223,8 +222,7 @@ def test_get_all_from_endpoint(mocker, date_range, end_date):
     api_caller.get_all_from_endpoint(mocked_api_session, 
                                      "https://forums.elderscrollsonline.com/api/v2/",
                           "comments", date_range[0], mock_con, "myTable", end_date=end_date,
-                          record_limit=100, specific_fields='dateInserted', 
-                          dates_table_name="dates")
+                          record_limit=100, specific_fields='dateInserted')
     # verify correct calls were made
     expected_calls=[]
     for given_date in api_caller.daterange_inclusive(datetime.strptime(date_range[0],
@@ -234,8 +232,7 @@ def test_get_all_from_endpoint(mocker, date_range, end_date):
             expected_calls.append(mock.call(mocked_api_session, 
                                             "https://forums.elderscrollsonline.com/api/v2/",
                               "comments", given_date.strftime("%Y-%m-%d"), mock_con, "myTable",
-                              record_limit=100, specific_fields='dateInserted', 
-                              dates_table_name="dates", saving_kwargs={}))
+                              record_limit=100, specific_fields='dateInserted', saving_kwargs={}))
     mocked_get_from_day.assert_has_calls(expected_calls)
     
     

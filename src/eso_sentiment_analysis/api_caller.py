@@ -65,7 +65,7 @@ def save_to_table(
 
 
 def _save_completed_date(
-    destination_db_con, endpoint, fin_date, dates_table_name="retrieved_dates"
+    destination_db_con, endpoint, fin_date
 ):
     """
     writes a date and endpoint to a table in a database. For use by get_all_from_one_day
@@ -77,7 +77,7 @@ def _save_completed_date(
         return
     date_df = pd.DataFrame({"endpoint": [endpoint], "date": [fin_date]})
     date_df.to_sql(
-        dates_table_name, destination_db_con, index=False, if_exists="append"
+        "retrieved_dates", destination_db_con, index=False, if_exists="append"
     )
 
 
@@ -90,7 +90,6 @@ def get_all_from_one_day(
     destination_table_name,
     record_limit=100,
     specific_fields=None,
-    dates_table_name="retrieved_dates",
     saving_kwargs={},
 ):
     """get all from endpoint on a given day"""
@@ -119,7 +118,7 @@ def get_all_from_one_day(
     if response.headers["x-app-page-result-count"] == 0:
         # no data for this day
         _save_completed_date(
-            destination_db_con, endpoint, date, dates_table_name=dates_table_name
+            destination_db_con, endpoint, date
         )
         return
 
@@ -138,7 +137,7 @@ def get_all_from_one_day(
         )
     # save date to 'completed' table
     _save_completed_date(
-        destination_db_con, endpoint, date, dates_table_name=dates_table_name
+        destination_db_con, endpoint, date
     )
 
 
@@ -152,7 +151,6 @@ def get_all_from_endpoint(
     end_date="today",
     record_limit=100,
     specific_fields=None,
-    dates_table_name="retrieved_dates",
     saving_kwargs={},
 ):
     """
@@ -172,9 +170,9 @@ def get_all_from_endpoint(
         end_date_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
     # pull previously finished dates
     completed_dates = pd.read_sql(
-        "SELECT date FROM ? WHERE endpoint is ?",
+        "SELECT date FROM retrieved_dates WHERE endpoint=?",
         destination_db_con,
-        params=[dates_table_name, endpoint],
+        params=[endpoint,],
     )
 
     print(completed_dates)
@@ -196,7 +194,6 @@ def get_all_from_endpoint(
             destination_table_name,
             record_limit=record_limit,
             specific_fields=specific_fields,
-            dates_table_name=dates_table_name,
             saving_kwargs=saving_kwargs,
         )
 
@@ -209,12 +206,12 @@ if __name__ == "__main__":
         "endpoint", help="the api endpoint desired e.g. comments, discussions"
     )
     parser.add_argument(
-        "start_date",
+        "--start_date",
         help="the earliest date from which you want to pull records",
         default="2014-01-01",
     )
     parser.add_argument(
-        "end_date",
+        "--end_date",
         help="the latest date from which you want to pull records",
         default="today",
     )
@@ -229,5 +226,6 @@ if __name__ == "__main__":
         args.endpoint,
         args.start_date,
         db_con,
+        args.endpoint,
         end_date=args.end_date,
     )
