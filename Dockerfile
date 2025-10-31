@@ -35,7 +35,8 @@ COPY --chown=eso_analysis test/ test/
 
 # run tests, linters, security checkers
 # note: only unit tests run here because integration/e2e need Redis container
-RUN python -m pytest test/unit/ && \
+RUN python -m pip install . -c constraints.txt && \
+    python -m pytest test/unit/ && \
     python -m isort src/ --check && \
     python -m black src/ --check --quiet && \
     python -m bandit -r src/ --quiet && \
