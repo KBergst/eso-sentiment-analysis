@@ -11,7 +11,7 @@ services:
       - testing
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile  #TODO separate dev container build
     depends_on:
       - analysis-service
     command: >
