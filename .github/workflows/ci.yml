@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Checkout code from GitHub
         uses: actions/checkout@v3
-      - name: Run end-to-end tests
+      - name: Run tests
         run: >
           docker compose --profile testing up 
           --build 
