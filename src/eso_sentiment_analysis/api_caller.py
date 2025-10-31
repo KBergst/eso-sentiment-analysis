@@ -6,6 +6,7 @@ import argparse
 from datetime import date, datetime, timedelta
 
 import pandas as pd
+import sqlite3
 from requests.adapters import HTTPAdapter
 from requests_ratelimiter import LimiterSession
 from urllib3.util import Retry
