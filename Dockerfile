@@ -40,7 +40,7 @@ RUN python -m pip install . -c constraints.txt && \
     python -m isort src/ --check && \
     python -m black src/ --check --quiet && \
     python -m bandit -r src/ --quiet && \
-    python -m pip wheel --wheel-dir dist/ . -c constraints.txt
+    python -m pip wheel --wheel-dir dist/ . -c constraints.txt ".[dev]"
 
 ##### second stage
 FROM python:3.11.2-slim-bullseye
