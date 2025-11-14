@@ -214,7 +214,7 @@ def test_get_all_from_endpoint(mocker, date_range, end_date):
                                        autospec=True)
     
     # generate the expected calls to get_all_from_day
-    mock_completed_dates = {"date":['2016-07-29','2004-04-04']}
+    mock_completed_dates = pd.DataFrame({"date":['2016-07-29','2004-04-04']})
     mock_get_prev_dates = mocker.patch("pandas.read_sql", autospec=True)
     mock_get_prev_dates.return_value=mock_completed_dates
     
@@ -225,14 +225,25 @@ def test_get_all_from_endpoint(mocker, date_range, end_date):
                           record_limit=100, specific_fields='dateInserted')
     # verify correct calls were made
     expected_calls=[]
+    bad_calls=[]
     for given_date in api_caller.daterange_inclusive(datetime.strptime(date_range[0],
                                                                        "%Y-%m-%d"),
                                           datetime.strptime(date_range[1], "%Y-%m-%d")):
-        if given_date.strftime("%Y-%m-%d") not in mock_completed_dates["date"]:
+        if given_date.strftime("%Y-%m-%d") not in list(mock_completed_dates["date"]):
             expected_calls.append(mock.call(mocked_api_session, 
                                             "https://forums.elderscrollsonline.com/api/v2/",
                               "comments", given_date.strftime("%Y-%m-%d"), mock_con, "myTable",
-                              record_limit=100, specific_fields='dateInserted', saving_kwargs={}))
+                              record_limit=100, specific_fields='dateInserted', 
+                                            saving_kwargs={}))
+        else:
+            bad_calls.append(mock.call(mocked_api_session, 
+                                            "https://forums.elderscrollsonline.com/api/v2/",
+                              "comments", given_date.strftime("%Y-%m-%d"), mock_con, "myTable",
+                              record_limit=100, specific_fields='dateInserted', 
+                                       saving_kwargs={}))
     mocked_get_from_day.assert_has_calls(expected_calls)
+    for call in bad_calls:
+        assert call not in mocked_get_from_day.mock_calls
+    
     
     

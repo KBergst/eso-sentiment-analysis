@@ -125,10 +125,8 @@ def get_all_from_one_day(
     save_to_table(
         response.json(), destination_db_con, destination_table_name, **saving_kwargs
     )
-    print(response.headers.keys())
     # get the remaining pages
     while "x-app-page-next-url" in response.headers.keys():
-        print("in while loop")
         response = api_session.get(
             response.headers["x-app-page-next-url"], timeout=None
         )
@@ -179,7 +177,7 @@ def get_all_from_endpoint(
 
     for given_date_dt in daterange_inclusive(start_date_dt, end_date_dt):
         given_date = given_date_dt.strftime("%Y-%m-%d")
-        if given_date in completed_dates["date"]:
+        if given_date in list(completed_dates["date"]):
             print(
                 f"data from {given_date} on {endpoint} endpoint already retrieved, skipping"
             )

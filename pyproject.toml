@@ -11,6 +11,7 @@ dependencies = [
     "requests",
     "requests-ratelimiter",
     "pandas",
+    "pyabsa",
 ]
 
 [project.optional-dependencies]
